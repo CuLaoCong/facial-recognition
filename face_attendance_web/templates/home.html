@@ -1,47 +1,27 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Hệ thống điểm danh</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        .container {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        .video {
-            flex: 1;
-        }
-        .info {
-            flex: 1;
-            margin-left: 40px;
-            border-left: 2px solid #ccc;
-            padding-left: 20px;
-        }
-        h1 {
-            margin-bottom: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>YOLO Detection</title>
+  <style>
+    .container { display: flex; }
+    .sidebar { width: 30%; padding: 10px; border-right: 1px solid #ccc; }
+    .main { width: 70%; position: relative; }
+    #video, #canvas { width: 100%; }
+  </style>
 </head>
 <body>
-    <h1>📷 Hệ thống chấm công bằng khuôn mặt</h1>
-
-    <div class="container">
-        <div class="video">
-            <h2>Khung camera:</h2>
-            <img src="{{ url_for('video_feed') }}" width="640" height="480" alt="Camera hiện tại"/>
-        </div>
-
-        <div class="info">
-            <h2>Thông tin nhận diện:</h2>
-            <p><strong>Tên:</strong> {{ name }}</p>
-            <p><strong>Mã số:</strong> {{ employee_id }}</p>
-            <p><strong>Chức vụ:</strong> {{ position }}</p>
-        </div>
+  <div class="container">
+    <div class="sidebar">
+      <h3>Thông tin người quét</h3>
+      <ul id="infoList"></ul>
     </div>
+    <div class="main">
+      <video id="video" autoplay muted></video>
+      <canvas id="canvas"></canvas>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
 </body>
 </html>

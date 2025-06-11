@@ -1,0 +1,75 @@
+{% block title %}
+<title>Add Social Account</title>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="table-responsive">
+
+    {% if alert %}
+    <script>
+        showAlear(function () {
+            alert("{{alert}}");
+            // var result = confirm("{{alert}}");
+
+            // if (result) {
+            //     window.location.href = "/"";
+            //     // alert("Đã xoá tài khoản có c_user: " + cUser);
+            // }
+            window.location.href = "/";
+        });
+    </script>
+    {% endif %}
+    <table class="container table table-striped table-bordered table-hover">
+        <h2 class="text-center mb-4">Quản lý Nhân Viên</h2>
+        <thead class="table-dark">
+            <tr>
+                <th>Id</th>
+                <th>Name</th>
+                <th>dob</th>
+                <th>position</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Sử dụng vòng lặp for để tạo dữ liệu từ danh sách -->
+             <!-- khi gửi qua có tên là records_html và nó là dạng list nên mình lấy nó như code py -->
+            {% for records in records_html %}
+            <tr>
+                <!-- đoạn này là lấy key bên trong json  -->
+                <td class="id-user">{{ records.employee_id }}</td> 
+                <td class="name-column">{{ records.name }}</td>
+                <td class="dob-column">{{ records.dob }}</td>
+                <td class="position-column">{{ records.ahihi }}</td>
+                <td class="action-btn">
+                    <!-- Nút Xem -->
+                    <button type="button" class="btn btn-primary" onclick="viewRow(this)">Xem</button>
+                    <!-- Nút Sửa -->
+                    <button type="button" class="btn btn-info" onclick="editRow(this)">Sửa</button>
+                    <!-- Nút Xoá -->
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete(this)">Xoá</button>
+                    
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="container">
+        <button type="button" class="btn btn-primary" onclick="window.location.href='/add-user'">Thêm Nhân Sự</button>
+    </div>
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11" >
+        <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true"  data-bs-delay="3000">
+          <div class="toast-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16">
+              <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2M8 1.918l-.797.161A4 4 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4 4 0 0 0-3.203-3.92zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5 5 0 0 1 13 6c0 .88.32 4.2 1.22 6"/>
+            </svg>
+          </div>
+          <div class="toast-body" id="toastMessage" style="color: #4CAF50;">
+            
+          </div>
+        </div>
+      </div>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</div>
+{% endblock %}

@@ -204,9 +204,17 @@
     <div class="main-container">
         <button id="toggle-stream-btn" class="nav-button" style="margin-bottom: 20px;">Tắt Stream</button>
         <div class="camera-container">
+            {% if WEBCAMOPTION == 'webcam' %}
+            <div class="camera-frame">
+                <img src="/video_feed" alt="Webcam Stream" />
+                <div style="text-align:center; font-weight:bold;">Webcam</div>
+            </div>
+            {% elif WEBCAMOPTION == 'ESP32-CAM' %}
             <div class="camera-frame">
                 <img src="http://192.168.6.104/stream" alt="ESP32-CAM Stream" />
+                <div style="text-align:center; font-weight:bold;">ESP32-CAM</div>
             </div>
+            {% endif %}
         </div>
 
         <div class="recognition-info">

@@ -38,7 +38,7 @@ ESP32_CAM_URL = "http://192.168.6.104/stream"
 INFO_URL = "http://192.168.6.104/info"
 UPLOAD_DIR = "uploads"
 API_TOKEN = "123456"
-WEBCAMOPTION = 'webcam' #webcam or ESP32-CAM
+WEBCAMOPTION = 'ESP32-CAM' #webcam or ESP32-CAM
 STREAM_ENABLED = True
 
 # Tạo thư mục uploads
@@ -312,8 +312,7 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/")
 async def index(request: Request):
-    # hàm này em có thể truyền file trang chủ của tụi em vào
-    return templates.TemplateResponse("main.html", {"request": request})
+    return templates.TemplateResponse("main.html", {"request": request, "WEBCAMOPTION": WEBCAMOPTION})
 
 @app.get("/diemdanh")
 async def camera_demo(request: Request):

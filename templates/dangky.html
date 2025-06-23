@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Ký Khuôn Mặt Nhân Viên</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+            position: relative; /* Thêm position relative cho body */
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            color: #333;
+        }
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 30px;
+        }
+        .camera-section, .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.08);
+        }
+        .camera-section {
+            text-align: center;
+        }
+        .camera-section h2, .form-section h2 {
+            margin-bottom: 20px;
+        }
+        .camera-frame {
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 15px;
+            background: #222;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 4 / 3;
+        }
+        .camera-frame video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .camera-buttons {
+            margin: 15px 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #bdbdbd, #757575);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #e53935, #b71c1c);
+        }
+        .preview-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        .preview-images {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            min-height: 80px;
+            background: #f0f2f5;
+            padding: 10px;
+            border-radius: 8px;
+            justify-content: center;
+        }
+        .preview-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #764ba2;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        .form-group input {
+            padding: 9px 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+        .submit-section {
+            margin-top: 25px;
+            text-align: center;
+        }
+        .alert {
+            margin-top: 20px;
+            padding: 12px 18px;
+            border-radius: 8px;
+            font-weight: 500;
+            text-align: center;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 15px;
+            }
+            .header h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Nút quay lại ĐẶT TRƯỚC tất cả container -->
+    <a href="/" class="back-button">
+        ← Quay lại trang chính
+    </a>
+
+    <div class="container">
+        <div class="header">
+            <h1>Đăng Ký Nhân Viên Mới</h1>
+            <p>Chụp ảnh khuôn mặt và điền thông tin để hoàn tất</p>
+        </div>
+        <div class="main-content">
+            <!-- Camera và chụp ảnh -->
+            <div class="camera-section">
+                <h2>1. Chụp Ảnh Khuôn Mặt</h2>
+                <div class="camera-frame">
+                    <!-- Thay video thành stream thực tế nếu có backend -->
+                    <video id="camera" autoplay playsinline></video>
+                </div>
+                <div class="camera-buttons">
+                    <button class="btn" onclick="captureMultipleImages()" type="button">Chụp 5 ảnh</button>
+                    <button class="btn btn-danger" onclick="clearCaptures()" type="button">Xóa Hết</button>
+                </div>
+                <div class="preview-section">
+                    <h3>Ảnh Đã Chụp (<span id="preview-count">0</span>/5)</h3>
+                    <div class="preview-images" id="preview-images">
+                        <div style="text-align: center; color: #666; width: 100%; padding: 20px;">Chưa có ảnh nào</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Form đăng ký -->
+            <div class="form-section">
+                <h2>2. Nhập Thông Tin</h2>
+                <form id="registration-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="employee_id">Mã nhân viên</label>
+                            <input type="text" id="employee_id" name="employee_id" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Họ và tên</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dob">Ngày sinh</label>
+                            <input type="date" id="dob" name="dob" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="position">Chức vụ</label>
+                            <input type="text" id="position" name="position" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="department">Phòng ban</label>
+                            <input type="text" id="department" name="department">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Số điện thoại</label>
+                            <input type="text" id="phone" name="phone">
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email">
+                        </div>
+                    </div>
+                    <div class="submit-section">
+                        <button class="btn" type="submit" id="register-btn" disabled>
+                            Hoàn Tất Đăng Ký
+                        </button>
+                    </div>
+                </form>
+                <div id="alert-container"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Camera thực tế (nếu có backend)
+        const video = document.getElementById('camera');
+        let mediaRecorder;
+        let recordedChunks = [];
+        let capturedImages = [];
+        let globalStream = null; // Biến toàn cục để quản lý stream
+        const previewImages = document.getElementById('preview-images');
+        const previewCount = document.getElementById('preview-count');
+        const registerBtn = document.getElementById('register-btn');
+        const registrationForm = document.getElementById('registration-form');
+
+        function stopCamera() {
+            if (globalStream && globalStream.getTracks) {
+                globalStream.getTracks().forEach(track => track.stop());
+                globalStream = null;
+            }
+            video.srcObject = null;
+        }
+
+        async function captureMultipleImages() {
+            clearCaptures();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                globalStream = stream;
+                video.play();
+                let count = 0;
+                const interval = setInterval(() => {
+                    if (count < 5) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        capturedImages.push(canvas.toDataURL('image/jpeg', 0.9));
+                        updatePreview();
+                        count++;
+                    } else {
+                        clearInterval(interval);
+                        if (globalStream && globalStream.getTracks) {
+                            globalStream.getTracks().forEach(track => track.stop());
+                            globalStream = null;
+                        }
+                        showAlert('Đã chụp xong 5 ảnh!', 'success');
+                    }
+                }, 800);
+            } catch (err) {
+                showAlert('Không thể truy cập camera!', 'error');
+            }
+        }
+
+        function updatePreview() {
+            previewImages.innerHTML = '';
+            previewCount.textContent = capturedImages.length;
+            if (capturedImages.length > 0) {
+                capturedImages.forEach(imgData => {
+                    const img = document.createElement('img');
+                    img.src = imgData;
+                    img.className = 'preview-image';
+                    previewImages.appendChild(img);
+                });
+            } else {
+                previewImages.innerHTML = '<div style="text-align: center; color: #666; width: 100%; padding: 20px;">Chưa có ảnh nào</div>';
+            }
+            registerBtn.disabled = capturedImages.length === 0;
+        }
+
+        function clearCaptures() {
+            capturedImages = [];
+            updatePreview();
+        }
+
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alert-container');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            alertContainer.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+        }
+
+        registrationForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (capturedImages.length === 0) {
+                showAlert('Vui lòng chụp ảnh để lấy ảnh.', 'error');
+                return;
+            }
+
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<span class="loading-spinner"></span> Đang xử lý...';
+            const formData = new FormData(registrationForm);
+            const data = {
+                employee_id: formData.get('employee_id'),
+                name: formData.get('name'),
+                dob: formData.get('dob'),
+                position: formData.get('position'),
+                department: "IT",
+                phone: "0123456789",
+                email: formData.get('email'),
+                images: capturedImages
+            };
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showAlert(`Đăng ký thành công cho: ${result.message.split(' cho ')[1]}`, 'success');
+                    registrationForm.reset();
+                    clearCaptures();
+                } else {
+                    showAlert(result.detail || 'Đã có lỗi xảy ra.', 'error');
+                }
+            } catch (error) {
+                showAlert('Lỗi kết nối đến server.', 'error');
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = 'Hoàn Tất Đăng Ký';
+            }
+        });
+        updatePreview();
+
+        (async function() {
+            await fetch('/toggle_stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(false)
+            });
+        })();
+    </script>
+</body>
+</html>

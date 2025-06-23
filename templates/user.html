@@ -29,19 +29,25 @@
                 <th>Name</th>
                 <th>dob</th>
                 <th>position</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Department</th>
                 <th>Action</th>
             </tr>
         </thead>
         <tbody>
             <!-- Sử dụng vòng lặp for để tạo dữ liệu từ danh sách -->
              <!-- khi gửi qua có tên là records_html và nó là dạng list nên mình lấy nó như code py -->
-            {% for records in records_html %}
+            {% for emp in records_html %}
             <tr>
                 <!-- đoạn này là lấy key bên trong json  -->
-                <td class="id-user">{{ records.employee_id }}</td> 
-                <td class="name-column">{{ records.name }}</td>
-                <td class="dob-column">{{ records.dob }}</td>
-                <td class="position-column">{{ records.ahihi }}</td>
+                <td class="id-user">{{ emp.employee_id }}</td> 
+                <td class="name-column">{{ emp.name }}</td>
+                <td class="dob-column">{{ emp.dob }}</td>
+                <td class="position-column">{{ emp.position }}</td>
+                <td class="email-column">{{ emp.email or '' }}</td>
+                <td class="phone-column">{{ emp.phone or '' }}</td>
+                <td class="department-column">{{ emp.department or '' }}</td>
                 <td class="action-btn">
                     <!-- Nút Xem -->
                     <button type="button" class="btn btn-primary" onclick="viewRow(this)">Xem</button>

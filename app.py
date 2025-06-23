@@ -6,7 +6,7 @@ import face_recognition
 import numpy as np
 import pickle
 from ultralytics import YOLO
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends, Body
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 import datetime
@@ -26,17 +26,20 @@ from models.user import Employee
 from models.attendance import Attendance, AttendanceRecord
 from contextlib import asynccontextmanager
 import uvicorn
+import shutil
+import base64
 
 
 
 app = FastAPI()
 
 # Cấu hình
-ESP32_CAM_URL = "http://192.168.1.105/stream"
-INFO_URL = "http://192.168.1.105/info"
+ESP32_CAM_URL = "http://192.168.6.104/stream"
+INFO_URL = "http://192.168.6.104/info"
 UPLOAD_DIR = "uploads"
 API_TOKEN = "123456"
 WEBCAMOPTION = 'webcam' #webcam or ESP32-CAM
+STREAM_ENABLED = True
 
 # Tạo thư mục uploads
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -103,12 +106,12 @@ class RecognitionResponse(BaseModel):
 
 
 @lru_cache(maxsize=100)
-def recognize_face(encoding_tuple):
+def recognize_face(encoding_tuple):  #ham để nhận diện khuôn mặt
     if not known_encodings:
         return "Unknown"
     encoding = np.array(encoding_tuple)
     matches = face_recognition.compare_faces(
-        known_encodings, encoding, tolerance=0.45)
+        known_encodings, encoding, tolerance=0.45) #so sánh khuôn mặt với khuôn mặt đã biết tolerance càng nhỏ càng đúng
     name = "Unknown"
     if True in matches:
         matched_idxs = [i for i, b in enumerate(matches) if b]
@@ -191,17 +194,31 @@ async def upload_image(request: Request, db: Session = Depends(get_db)):
 async def get_report(db: Session = Depends(get_db)):
     try:
         records = db.query(Attendance).order_by(Attendance.time.desc()).limit(100).all()
-        return [
-            {
-                "id": record.id,
-                "name": record.name,
-                "time": record.time.strftime("%Y-%m-%d %H:%M:%S"),
-                "confidence": record.confidence,
-                "employee_id": record.employee_id,
-                "dob": record.dob,
-                "position": record.position
-            } for record in records
-        ]
+        data = []
+        for record in records:
+            # Kiểm tra thư mục register_faces/<tên> có tồn tại không
+            reg_dir = os.path.join("register_faces", record.name)
+            if os.path.isdir(reg_dir) and os.listdir(reg_dir):
+                data.append({
+                    "id": record.id,
+                    "name": record.name,
+                    "time": record.time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "confidence": record.confidence,
+                    "employee_id": record.employee_id,
+                    "dob": record.dob,
+                    "position": record.position
+                })
+            else:
+                data.append({
+                    "id": record.id,
+                    "name": "Chưa nhận diện được",
+                    "time": record.time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "confidence": 0,
+                    "employee_id": "",
+                    "dob": "",
+                    "position": ""
+                })
+        return data
     except SQLAlchemyError as e:
         print(f"Report error: {e}")
         raise HTTPException(status_code=500, detail="Server error")
@@ -248,8 +265,33 @@ async def export_to_excel(db: Session = Depends(get_db)):
 
 
 
+@app.post("/toggle_stream")
+async def toggle_stream(enable: bool = Body(...)):
+    global STREAM_ENABLED, stop_stream_flag, stream_thread, cap
+    STREAM_ENABLED = enable
+    if not enable:
+        stop_stream_flag = True
+        if cap is not None:
+            cap.release()
+            cap = None
+    else:
+        if stream_thread is None or not stream_thread.is_alive():
+            stop_stream_flag = False
+            stream_thread = threading.Thread(target=process_stream, daemon=True)
+            stream_thread.start()
+    return {"stream_enabled": STREAM_ENABLED}
+
 @app.get("/video_feed")
 async def video_feed():
+    if not STREAM_ENABLED:
+        blank = np.zeros((480, 640, 3), dtype=np.uint8)
+        _, jpeg = cv2.imencode('.jpg', blank)
+        frame_bytes = jpeg.tobytes()
+        async def generate_blank():
+            while True:
+                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                await asyncio.sleep(0.05)
+        return StreamingResponse(generate_blank(), media_type='multipart/x-mixed-replace; boundary=frame')
     async def generate():
         global output_frame, frame_lock
         while True:
@@ -271,12 +313,16 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/")
 async def index(request: Request):
     # hàm này em có thể truyền file trang chủ của tụi em vào
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("main.html", {"request": request})
 
-@app.get("/camera")
+@app.get("/diemdanh")
 async def camera_demo(request: Request):
     # hàm này sẽ là file html mà mình muốn chuyển đến
-    return templates.TemplateResponse("index2.html", {"request": request})
+    return templates.TemplateResponse("diemdanh.html", {"request": request})
+
+@app.get("/dangky")
+async def register_page(request: Request):
+    return templates.TemplateResponse("dangky.html", {"request": request})
 
 @app.get("/users")
 async def get_all_user(request: Request, db: Session = Depends(get_db)):
@@ -295,45 +341,43 @@ async def get_all_user(request: Request, db: Session = Depends(get_db)):
     # trả lại thì nó ntn đầu tiên là tên file html tiếp theo là dữ liệu muốn gửi lên
     return templates.TemplateResponse("user.html", {"request": request, "records_html": data})
 
+cap = None
+stream_thread = None
+stop_stream_flag = False
+
 def process_stream():
-    global output_frame, frame_lock
+    global output_frame, frame_lock, cap, stop_stream_flag
     src_cam = 0 if WEBCAMOPTION == "webcam" else ESP32_CAM_URL
-    while True:
+    while not stop_stream_flag:
         print("src_cam: ", src_cam)
-        cap = cv2.VideoCapture(src_cam)
+        if cap is None:
+            cap = cv2.VideoCapture(src_cam)
         if not cap.isOpened():
             print(f"Error: Cannot open {WEBCAMOPTION} stream. Retrying...")
             sleep(5)
-
-        while True:
+            continue
+        while not stop_stream_flag:
             ret, frame = cap.read()
             if not ret:
                 print("Error: Stream disconnected. Retrying...")
                 break
-
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             face_locations = face_recognition.face_locations(rgb_frame)
             face_encodings = face_recognition.face_encodings(
                 rgb_frame, face_locations)
-
             db = SessionLocal()
             try:
                 for (top, right, bottom, left), encoding in zip(face_locations, face_encodings):
                     encoding_tuple = tuple(encoding)
                     name = recognize_face(encoding_tuple)
                     name = name.split('_')[-1]
-
-                    # Lấy thông tin nhân viên từ database
                     emp = db.query(Employee).filter_by(name=name).first()
-                    
-                    # Ghi thông tin điểm danh vào database nếu nhận diện thành công
                     if name != "Unknown" and emp:
                         current_time = time()
                         with last_detected_lock:
                             if name in last_detected and current_time - last_detected[name]["time"] < CACHE_TIMEOUT:
                                 continue
                             last_detected[name] = {"time": current_time}
-
                         confidence = 1 - \
                             min(face_recognition.face_distance(
                                 known_encodings, encoding)) if known_encodings else 0
@@ -348,37 +392,85 @@ def process_stream():
                         )
                         db.add(attendance)
                         db.commit()
-                        # Log debug
-                        # print(f"Đã ghi vào database: {name}, {timestamp}, {confidence}")
-
-                        # Lưu ảnh (tùy chọn)
                         img_path = os.path.join(
                             UPLOAD_DIR, f"{name}_{timestamp.strftime('%Y%m%d_%H%M%S')}.jpg")
                         cv2.imwrite(img_path, frame)
-
                         info = f"ID: {emp.employee_id}, DOB: {emp.dob}, Position: {emp.position}, Confidence: {confidence:.2f}"
                         if src_cam != 0:
                             send_to_esp32(name, info)
-
-                    # Vẽ khung và nhãn
                     cv2.rectangle(frame, (left, top),
                                     (right, bottom), (0, 255, 0), 2)
                     label = name + (f" ({emp.employee_id})" if emp else "")
                     cv2.putText(frame, label, (left, top - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-
                 with frame_lock:
                     output_frame = frame.copy()
-
             finally:
                 db.close()
-
             sleep(0.05)
-
-        cap.release()
+        if cap is not None:
+            cap.release()
+            cap = None
         sleep(5)
 
 
+@app.post("/register")
+async def register_employee(data: dict):
+    # Lưu thông tin vào DB như cũ
+    # ...
+    # Lưu ảnh vào thư mục riêng
+    person_dir = os.path.join("register_faces", data['name'])
+    os.makedirs(person_dir, exist_ok=True)
+    for idx, img_data in enumerate(data['images']):
+        img_bytes = base64.b64decode(img_data.split(',')[1])
+        img_path = os.path.join(person_dir, f"{data['name']}_{idx+1}.jpg")
+        with open(img_path, 'wb') as f:
+            f.write(img_bytes)
+    return {"message": f"Đăng ký thành công cho {data['name']}"}
+
+
+@app.post("/clear_attendance")
+async def clear_attendance(db: Session = Depends(get_db)):
+    try:
+        # Xoá toàn bộ bản ghi Attendance
+        num_deleted = db.query(Attendance).delete()
+        db.commit()
+        # Xoá toàn bộ file trong uploads
+        if os.path.exists(UPLOAD_DIR):
+            for filename in os.listdir(UPLOAD_DIR):
+                file_path = os.path.join(UPLOAD_DIR, filename)
+                try:
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                except Exception as e:
+                    print(f"Error deleting file {file_path}: {e}")
+        return {"message": f"Đã xoá {num_deleted} bản ghi và file ảnh."}
+    except Exception as e:
+        db.rollback()
+        print(f"Error clearing attendance: {e}")
+        raise HTTPException(status_code=500, detail="Lỗi khi xoá dữ liệu điểm danh.")
+
+
+@app.post("/set_camera_source")
+async def set_camera_source(source: str = Body(...)):
+    global WEBCAMOPTION, cap, stop_stream_flag, stream_thread
+    if source not in ["webcam", "ESP32-CAM"]:
+        raise HTTPException(status_code=400, detail="Nguồn không hợp lệ")
+    WEBCAMOPTION = source
+    # Dừng stream hiện tại nếu đang chạy
+    stop_stream_flag = True
+    if cap is not None:
+        cap.release()
+        cap = None
+    # Khởi động lại stream với nguồn mới
+    stop_stream_flag = False
+    if stream_thread is None or not stream_thread.is_alive():
+        stream_thread = threading.Thread(target=process_stream, daemon=True)
+        stream_thread.start()
+    return {"message": f"Đã chuyển sang {source}"}
+
+
 if __name__ == "__main__":
-    threading.Thread(target=process_stream, daemon=True).start()
+    stream_thread = threading.Thread(target=process_stream, daemon=True)
+    stream_thread.start()
     uvicorn.run(app, port=8001)
